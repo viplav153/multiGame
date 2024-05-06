@@ -61,6 +61,7 @@ func createTableIfNotExists(db *sql.DB) error {
 	createUserTableQuery := `
 		CREATE TABLE IF NOT EXISTS user_data (
 			userID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		    name VARCHAR(20),
 			online_status VARCHAR(20),
 			friends VARCHAR(255)[] DEFAULT '{}',
 			sent_request VARCHAR(255)[] DEFAULT '{}',
