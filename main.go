@@ -6,6 +6,9 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"log"
+	handler "multiGame/api/http/friend"
+	service "multiGame/api/service/friend"
+	store "multiGame/api/store/friend"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -40,8 +43,18 @@ func main() {
 		log.Fatal("Error creating user table database:", err)
 	}
 
+	friendStore := store.New(db)
+	friendService := service.New(friendStore)
+	friendHandler := handler.New(friendService)
+
 	//// Define the HTTP handler function for /v1/api/bulkApproval route
-	//http.HandleFunc("/v1/api/bulkApproval", bulkApprovalHttp.BulkApproval)
+	http.HandleFunc("/addFriend", friendHandler.AddFriend)
+	http.HandleFunc("/createUser", friendHandler.CreateUser)
+	http.HandleFunc("/sendRequest", friendHandler.SendFriendRequest)
+	http.HandleFunc("/rejectFriend", friendHandler.RejectFriend)
+	http.HandleFunc("/removeFriend", friendHandler.RemoveFriend)
+	http.HandleFunc("/friends", friendHandler.ListAllFriend)
+	http.HandleFunc("/profile", friendHandler.ViewProfile)
 
 	// Start the HTTP server
 	log.Fatal(http.ListenAndServe(":8080", nil))

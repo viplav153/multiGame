@@ -17,7 +17,7 @@ func New(db *sql.DB) *friendStore {
 
 func (f *friendStore) GetUserByID(userID string) (*models.User, error) {
 	query := `
-		SELECT userID, online_status, friends, sent_request, received_request
+		SELECT userID, online_status, friends, sent_request, received_request,name
 		FROM user_data
 		WHERE userID = $1;
 	`
@@ -29,7 +29,7 @@ func (f *friendStore) GetUserByID(userID string) (*models.User, error) {
 	var user models.User
 
 	// Scan the result into the User struct
-	err := row.Scan(&user.UserID, &user.OnlineStatus, pq.Array(&user.Friends), pq.Array(&user.SentRequest), pq.Array(&user.ReceivedRequest))
+	err := row.Scan(&user.UserID, &user.OnlineStatus, pq.Array(&user.Friends), pq.Array(&user.SentRequest), pq.Array(&user.ReceivedRequest), &user.Name)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
@@ -167,7 +167,7 @@ func (f *friendStore) RejectFriend(friendUserID string, userID string) (*models.
 }
 
 func (f *friendStore) SendFriendRequest(friendUserID string, userID string) (*models.User, error) {
-	_, err := f.DB.Exec("UPDATE user_data SET receieved_request = array_append(received_request, $1) WHERE userID = $2", userID, friendUserID)
+	_, err := f.DB.Exec("UPDATE user_data SET received_request = array_append(received_request, $1) WHERE userID = $2", userID, friendUserID)
 	if err != nil {
 		log.Println(err)
 		return nil, err
