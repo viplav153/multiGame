@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"multiGame/api/store"
-	"time"
 )
 
 type redisStore struct {
@@ -19,7 +18,7 @@ func New(redis *redis.Client) store.RedisStore {
 
 func (r *redisStore) SetKeyValue(ctx context.Context, key string, value []byte) error {
 	//  Set a key
-	err := r.redis.Set(ctx, key, value, time.Minute*15).Err()
+	err := r.redis.Set(ctx, key, value, 0).Err()
 	if err != nil {
 		fmt.Println("Error setting key:", err)
 		return err
@@ -57,7 +56,7 @@ func (r *redisStore) SetKeyValueExpirationSame(ctx context.Context, key string, 
 }
 
 func (r *redisStore) IsKeyPresent(ctx context.Context, key string) bool {
-	existsResult := r.redis.Exists(ctx, "abc")
+	existsResult := r.redis.Exists(ctx, key)
 	if existsResult.Err() != nil {
 		return false
 	}

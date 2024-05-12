@@ -94,7 +94,13 @@ func main() {
 	http.HandleFunc("/profile", friendHandler.ViewProfile)
 
 	// party routes
-	http.HandleFunc("/party", partyHandler.CreateUser)
+	http.HandleFunc("/party", partyHandler.CreateParty)
+	http.HandleFunc("/partyInfo", partyHandler.GetPartyByID)
+	http.HandleFunc("/partyAdmin", partyHandler.MakePartyAdmin)
+	http.HandleFunc("/leaveParty", partyHandler.LeaveParty)
+	http.HandleFunc("/kick", partyHandler.KickFromParty)
+	http.HandleFunc("/partyInvite", partyHandler.SendPartyInvite)
+	http.HandleFunc("/partyRespond", partyHandler.RespondToPartyInvitation)
 
 	// Start the HTTP server
 	log.Fatal(http.ListenAndServe(":8080", nil))

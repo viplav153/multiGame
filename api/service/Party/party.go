@@ -71,13 +71,14 @@ func (p *partyService) RemoveFromParty(userID, userToRemove, partyId string) (*m
 			continue
 		}
 
-		if each.UserID == userToRemove || each.UserID == userID {
+		if each.UserID == userToRemove && userToRemove == userID {
 			return nil, errors.New("bro what are you doing you can't remove yourself")
 		}
 
 		allOtherUser = append(allOtherUser, each)
 	}
 
+	newParty.Users = allOtherUser
 	// Serialize struct to JSON
 	jsonData, err := json.Marshal(newParty)
 	if err != nil {
@@ -110,16 +111,18 @@ func (p *partyService) MakeAdminOfParty(userID, userToMakeAdmin, partyId string)
 
 	var allOtherUser []models.PartyUsers
 	for _, each := range party.Users {
+		if each.UserID == userToMakeAdmin && each.IsAdmin {
+			return nil, errors.New("bro what! you are already admin")
+		}
+
 		if each.UserID == userToMakeAdmin {
 			each.IsAdmin = true
 		}
 
-		if each.UserID == userToMakeAdmin || each.UserID == userID {
-			return nil, errors.New("bro what are already admin")
-		}
-
 		allOtherUser = append(allOtherUser, each)
 	}
+
+	newParty.Users = allOtherUser
 
 	// Serialize struct to JSON
 	jsonData, err := json.Marshal(newParty)
@@ -204,7 +207,11 @@ func (p *partyService) SendPartyInvitation(senderId, receiverID, partyId string)
 
 func (p *partyService) PartyInvitation(receiverID, partyId, verdict string) (*models.Party, error) {
 	if !p.RedisStore.IsKeyPresent(context.Background(), partyId) {
-		return nil, errors.New("party done go home")
+		return nil, errors.New("party done go study")
+	}
+
+	if verdict != "REJECTED" && verdict != "ACCEPTED" {
+		return nil, errors.New("wrong response choose any of [ACCEPTED, REJECTED]")
 	}
 
 	party, err := p.GetPartyByID(partyId)
@@ -217,7 +224,7 @@ func (p *partyService) PartyInvitation(receiverID, partyId, verdict string) (*mo
 		return nil, err
 	}
 
-	// add invite to friend profile
+	// remove invite to friend profile
 	_, err = p.FriendStore.RemovePartyInvites(receiverID, partyId)
 	if err != nil {
 		return nil, err
@@ -240,6 +247,7 @@ func (p *partyService) PartyInvitation(receiverID, partyId, verdict string) (*mo
 		return nil, errors.New("bro you I guess you don't have invite for this party")
 	}
 
+	newParty.Users = allOtherUser
 	// Serialize struct to JSON
 	jsonData, err := json.Marshal(newParty)
 	if err != nil {
@@ -256,12 +264,25 @@ func (p *partyService) PartyInvitation(receiverID, partyId, verdict string) (*mo
 
 func (p *partyService) LeaveParty(userID, partyId string) (*models.Party, error) {
 	if !p.RedisStore.IsKeyPresent(context.Background(), partyId) {
-		return nil, errors.New("party done go home")
+		return nil, errors.New("party done go and study")
 	}
 
 	party, err := p.GetPartyByID(partyId)
 	if err != nil {
 		return nil, err
+	}
+
+	if isUserPartyAdmin(party.Users, userID) {
+		numberOfAdmin := 0
+		for _, each := range party.Users {
+			if each.IsAdmin == true {
+				numberOfAdmin++
+			}
+		}
+
+		if numberOfAdmin == 1 {
+			return nil, errors.New("bro you are only admin you can't leave the party make someone admin first")
+		}
 	}
 
 	newParty := models.Party{PartyId: partyId}
@@ -280,6 +301,7 @@ func (p *partyService) LeaveParty(userID, partyId string) (*models.Party, error)
 		return nil, errors.New("bro you I guess you don't have invite for this party or already left")
 	}
 
+	newParty.Users = allOtherUser
 	// Serialize struct to JSON
 	jsonData, err := json.Marshal(newParty)
 	if err != nil {
