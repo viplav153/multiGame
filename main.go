@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"log"
 	handler "multiGame/api/http/friend"
+	partyHandler "multiGame/api/http/party"
 	service "multiGame/api/service/friend"
+	partyService "multiGame/api/service/party"
 	store "multiGame/api/store/friend"
+	partyStore "multiGame/api/store/party"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -43,9 +48,41 @@ func main() {
 		log.Fatal("Error creating user table database:", err)
 	}
 
+	// Redis
+
+	// Create a new Redis Client
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:" + os.Getenv("REDIS_PORT"), // Redis server address
+		Password: "",                                     // Redis Password
+		DB:       0,                                      // Default DB to use
+	})
+
+	// Ping the Redis server to test the connection
+	err = rdb.Ping(context.Background()).Err()
+	if err != nil {
+		fmt.Println("Error connecting to Redis:", err)
+		return
+	}
+	fmt.Println("Connected to Redis!")
+
+	// Close the connection when done
+	defer func() {
+		err := rdb.Close()
+		if err != nil {
+			fmt.Println("Error closing connection:", err)
+			return
+		}
+
+		fmt.Println("Connection to Redis closed.")
+	}()
+
 	friendStore := store.New(db)
 	friendService := service.New(friendStore)
 	friendHandler := handler.New(friendService)
+
+	partyStore := partyStore.New(rdb)
+	partyService := partyService.New(friendStore, partyStore)
+	partyHandler := partyHandler.New(partyService)
 
 	//// Define the HTTP handler function for /v1/api/bulkApproval route
 	http.HandleFunc("/addFriend", friendHandler.AddFriend)
@@ -55,6 +92,9 @@ func main() {
 	http.HandleFunc("/removeFriend", friendHandler.RemoveFriend)
 	http.HandleFunc("/friends", friendHandler.ListAllFriend)
 	http.HandleFunc("/profile", friendHandler.ViewProfile)
+
+	// party routes
+	http.HandleFunc("/party", partyHandler.CreateUser)
 
 	// Start the HTTP server
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -79,6 +119,8 @@ func createTableIfNotExists(db *sql.DB) error {
 			friends VARCHAR(255)[] DEFAULT '{}',
 			sent_request VARCHAR(255)[] DEFAULT '{}',
 			received_request VARCHAR(255)[] DEFAULT '{}',
+		    parties_hosted VARCHAR(255)[] DEFAULT '{}',
+		    party_invites VARCHAR(255)[] DEFAULT '{}',
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			modified_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		);`

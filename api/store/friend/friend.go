@@ -17,7 +17,7 @@ func New(db *sql.DB) *friendStore {
 
 func (f *friendStore) GetUserByID(userID string) (*models.User, error) {
 	query := `
-		SELECT userID, online_status, friends, sent_request, received_request,name
+		SELECT userID, online_status, friends, sent_request, received_request,name,parties_hosted, party_invites 
 		FROM user_data
 		WHERE userID = $1;
 	`
@@ -29,7 +29,7 @@ func (f *friendStore) GetUserByID(userID string) (*models.User, error) {
 	var user models.User
 
 	// Scan the result into the User struct
-	err := row.Scan(&user.UserID, &user.OnlineStatus, pq.Array(&user.Friends), pq.Array(&user.SentRequest), pq.Array(&user.ReceivedRequest), &user.Name)
+	err := row.Scan(&user.UserID, &user.OnlineStatus, pq.Array(&user.Friends), pq.Array(&user.SentRequest), pq.Array(&user.ReceivedRequest), &user.Name, pq.Array(&user.HostedParty), pq.Array(&user.PartyInvites))
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
@@ -41,7 +41,7 @@ func (f *friendStore) GetUserByID(userID string) (*models.User, error) {
 func (f *friendStore) GetUsersFromIds(userIDs []string) ([]*models.User, error) {
 	// Prepare the SQL query
 	query := `
-		SELECT userID, online_status, friends, sent_request, received_request
+		SELECT userID, online_status, friends, sent_request, received_request, parties_hosted
 		FROM user_data
 		WHERE userID = ANY($1);
 	`
@@ -62,7 +62,7 @@ func (f *friendStore) GetUsersFromIds(userIDs []string) ([]*models.User, error) 
 			var user models.User
 
 			// Scan the result into the User struct
-			err := rows.Scan(&user.UserID, &user.OnlineStatus, pq.Array(&user.Friends), pq.Array(&user.SentRequest), pq.Array(&user.ReceivedRequest))
+			err := rows.Scan(&user.UserID, &user.OnlineStatus, pq.Array(&user.Friends), pq.Array(&user.SentRequest), pq.Array(&user.ReceivedRequest), pq.Array(&user.HostedParty))
 			if err != nil {
 				log.Println(err)
 				return nil, err
@@ -174,6 +174,36 @@ func (f *friendStore) SendFriendRequest(friendUserID string, userID string) (*mo
 	}
 
 	_, err = f.DB.Exec("UPDATE user_data SET sent_request = array_append(sent_request, $1) WHERE userID = $2", friendUserID, userID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return f.GetUserByID(userID)
+}
+
+func (f *friendStore) HostNewParty(userID, partyId string) (*models.User, error) {
+	_, err := f.DB.Exec("UPDATE user_data SET parties_hosted = array_append(parties_hosted, $1) WHERE userID = $2", partyId, userID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return f.GetUserByID(userID)
+}
+
+func (f *friendStore) AddPartyInvites(userID, partyId string) (*models.User, error) {
+	_, err := f.DB.Exec("UPDATE user_data SET party_invites = array_append(party_invites, $1) WHERE userID = $2", partyId, userID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return f.GetUserByID(userID)
+}
+
+func (f *friendStore) RemovePartyInvites(userID, partyId string) (*models.User, error) {
+	_, err := f.DB.Exec("UPDATE user_data SET party_invites = array_remove(party_invites, $1) WHERE userID = $2", partyId, userID)
 	if err != nil {
 		log.Println(err)
 		return nil, err

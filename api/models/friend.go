@@ -7,6 +7,8 @@ type User struct {
 	Friends         []string `json:"friends"`
 	SentRequest     []string `json:"sentRequest"`
 	ReceivedRequest []string `json:"receivedRequest"`
+	HostedParty     []string `json:"hostedParty"`
+	PartyInvites    []string `json:"partyInvites"`
 }
 
 type UserCreateRequest struct {
@@ -18,4 +20,16 @@ type UserUpdateRequest struct {
 	Friends         []string `json:"friends"`
 	SentRequest     []string `json:"sentRequest"`
 	ReceivedRequest []string `json:"receivedRequest"`
+}
+
+type Party struct {
+	PartyId string
+	Users   []PartyUsers
+}
+
+type PartyUsers struct {
+	UserID       string
+	InParty      bool
+	IsAdmin      bool
+	InviteStatus string // invitation pending , accepted, rejected
 }

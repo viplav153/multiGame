@@ -11,3 +11,13 @@ type Friend interface {
 	SendFriendRequest(friendID, userID string) (*models.User, error)
 	ViewProfile(userID string) (*models.User, error)
 }
+
+type Party interface {
+	CreateParty(userID string) (*models.Party, error)
+	GetPartyByID(partyID string) (*models.Party, error)
+	LeaveParty(userID, partyId string) (*models.Party, error)
+	PartyInvitation(receiverID, partyId, verdict string) (*models.Party, error)
+	SendPartyInvitation(senderId, receiverID, partyId string) (*models.Party, error)
+	MakeAdminOfParty(userID, userToMakeAdmin, partyId string) (*models.Party, error)
+	RemoveFromParty(userID, userToRemove, partyId string) (*models.Party, error)
+}
